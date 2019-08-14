@@ -67,7 +67,7 @@ $T = New-ScheduledTaskTrigger -AtStartup
     Run the script which registers an event and an action, given two ids.
     The first one is the external (preferred) GPU, and the second is the internal one.
 #>
-$A = New-ScheduledTaskAction  -Id "Register eGpuEventListener" -Execute "PowerShell.exe" -Argument "-File $(Get-Location)/autoDetectGraphicsCard.ps1 $($internal.InstanceId) $($external.InstanceId)"
+$A = New-ScheduledTaskAction  -Id "Register eGpuEventListener" -Execute "PowerShell.exe" -Argument "-File $(Get-Location)/registerEventListener.ps1 $($internal.InstanceId) $($external.InstanceId)"
 
 <#  Principal
     LogonType S4U specifies that we do this whether the user is logged in or not, and we do not use a password.
