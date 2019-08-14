@@ -27,15 +27,24 @@ SOFTWARE.
    disabling and enabling the internal one as appropriate.
 #>
 $action = {
-    $extern = $args[0]
-    $intern = $args[1]
-    
-    if ($extern.Status -like "OK" -and $intern.Status -like "OK") {
-        $intern | Disable-PnpDevice -Confirm:$false
+    $extern = Get-PnpDevice -InstanceId $args[0]
+    $intern = Get-PnpDevice -InstanceId $args[1]
+
+    # if the eGPU is present, we disable the internal one.
+    if ($extern.Present) {
+        if ($intern.Status -like "OK") {
+            $intern | Disable-PnpDevice -Confirm:$false
+        }
+        if ($extern.Status -notlike "OK") {
+            $extern | Disable-PnpDevice -Confirm:$false
+            $extern | Enable-PnpDevice -Confirm:$false
+        }
     }
-    elseif ($extern -like "ERROR" -and $intern -like "ERROR") {
-        $intern | Enable-PnpDevice -Confirm:$false
+    else {
+        if ($intern.Status -notlike "OK" -and $intern.Problem -like "CM_PROB_DISABLED") {
+            $intern | Enable-PnpDevice -Confirm:$false
+        }
     }
 }
 
-Register-CimIndicationEvent -Action $action -ClassName Win32_DeviceChangeEvent -SourceIdentifier graphicsCardChanged 
+Register-CimIndicationEvent -Action $action -ClassName Win32_DeviceChangeEvent -SourceIdentifier graphicsCardChanged
