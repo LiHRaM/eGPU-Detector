@@ -58,7 +58,28 @@ $internal = SelectDeviceId($options | Where-Object -FilterScript { $_.InstanceId
 Clear-Host
 Write-Host "Setting up task..."
 
-$time = New-ScheduledTaskTrigger -AtStartup
-$PS = New-ScheduledTaskAction  -Id "eGPU Detector" -Execute "PowerShell.exe" -Argument "-File $(Get-Location)/autoDetectGraphicsCard.ps1 $($internal.InstanceId) $($external.InstanceId)"
+<#  Triggers
+    The event handler only needs to be run once, i.e. at startup.
+#>
+$T = New-ScheduledTaskTrigger -AtStartup
 
-Register-ScheduledTask -TaskName "eGPU Detector Startup" -Trigger $time -Action $PS
+<#  Action
+    Run the script which registers an event and an action, given two ids.
+    The first one is the external (preferred) GPU, and the second is the internal one.
+#>
+$A = New-ScheduledTaskAction  -Id "Register eGpuEventListener" -Execute "PowerShell.exe" -Argument "-File $(Get-Location)/autoDetectGraphicsCard.ps1 $($internal.InstanceId) $($external.InstanceId)"
+
+<#  Principal
+    LogonType S4U specifies that we do this whether the user is logged in or not, and we do not use a password.
+#>
+
+$P = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType S4U -RunLevel Highest
+
+<#  Check for pre-existing task
+    We will error if the task already exists, and therefore remove any previous task instances with the same name.
+#>
+$existingTask = Get-ScheduledTask | Where-Object -FilterScript { $_.TaskName -like "eGpuEventListener" }
+if ($existingTask) {
+    $existingTask | Unregister-ScheduledTask -Confirm:$false
+}
+Register-ScheduledTask "eGpuEventListener" -Trigger $T -Action $A -Principal $P
