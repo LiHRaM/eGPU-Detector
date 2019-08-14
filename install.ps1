@@ -67,19 +67,27 @@ $T = New-ScheduledTaskTrigger -AtStartup
     Run the script which registers an event and an action, given two ids.
     The first one is the external (preferred) GPU, and the second is the internal one.
 #>
-$A = New-ScheduledTaskAction  -Id "Register eGpuEventListener" -Execute "PowerShell.exe" -Argument "-File $(Get-Location)/registerEventListener.ps1 $($internal.InstanceId) $($external.InstanceId)"
+$A = New-ScheduledTaskAction  -Id "Register eGpuEventListener" -Execute "pwsh.exe" -Argument "$(Get-Location)/registerEventListener.ps1 `"$($internal.InstanceId)`" `"$($external.InstanceId)`""
 
 <#  Principal
-    LogonType S4U specifies that we do this whether the user is logged in or not, and we do not use a password.
+    LogonType S4U specifies that we do this whether the user is logged in or not, 
+    and we do not use a password.
 #>
 
 $P = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType S4U -RunLevel Highest
 
-<#  Check for pre-existing task
-    We will error if the task already exists, and therefore remove any previous task instances with the same name.
+<#  Settings
+    There are some settings we are interesting in setting, i.e. 
+    that the task will run as soon as possible after startup, 
+    and that it will run even if the computer is not plugged in.
+    That way, the task will be prepared for being plugged into a dock.
 #>
-$existingTask = Get-ScheduledTask | Where-Object -FilterScript { $_.TaskName -like "eGpuEventListener" }
-if ($existingTask) {
-    $existingTask | Unregister-ScheduledTask -Confirm:$false
-}
-Register-ScheduledTask "eGpuEventListener" -Trigger $T -Action $A -Principal $P
+$S = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries
+
+<#  Check for pre-existing task
+    We will error if the task already exists, 
+    and therefore remove any previous task instances with the same name.
+#>
+Get-ScheduledTask | Where-Object -FilterScript { $_.TaskName -like "eGpuEventListener" } | Unregister-ScheduledTask -Confirm:$false
+
+Register-ScheduledTask "eGpuEventListener" -Trigger $T -Action $A -Principal $P -Settings $S
